@@ -51,8 +51,8 @@ int main() {
         for (int index2 = 0; index2 < numGPUs; index2++) {
             size_t data_size = 64 * 1024 * 1024;
             float time = P2PCopyTest(index1, index2, data_size);
-            float bandwidth = (data_size / 1024 / 1024) / (time); // MB/s
-            printf("%10f", bandwidth * bandwidth);
+            float bandwidth = (data_size / 1024 / 1024 / 1024.0) / (time); // GB/s
+            printf("%f,", bandwidth * bandwidth);
         }
         printf("\n");
     }
