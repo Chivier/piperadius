@@ -27,9 +27,11 @@ float P2PCopyTest(int device_id1, int device_id2, size_t size) {
     elapsed /= 1000;
 
     cudaSetDevice(device_id1);
+    cudaDeviceDisablePeerAccess(device_id2);
     cudaFree(pointers[0]);
 
     cudaSetDevice(device_id2);
+    cudaDeviceDisablePeerAccess(device_id1);
     cudaFree(pointers[1]);
 
     cudaEventDestroy(end);
