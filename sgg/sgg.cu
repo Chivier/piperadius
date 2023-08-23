@@ -20,6 +20,11 @@ float P2PCopyTest(int device_id1, int device_id2, size_t size) {
     cudaEventCreate(&begin);
     cudaEventCreate(&end);
 
+    // Check available
+    int avail;
+    cudaDeviceCanAccessPeer(&avail, device_id1, device_id2);
+    printf("[%d]", avail);
+
     // Warm Up
     int index;
     for (index = 0; index < kWarmUpTurns; ++index) {
@@ -57,6 +62,8 @@ int main() {
         std::cout << "Error: At least two GPUs are required." << std::endl;
         return 0;
     }
+
+    printf("Bandwidth test result:\n");
 
     for (int index1 = 0; index1 < numGPUs; index1++) {
         for (int index2 = 0; index2 < numGPUs; index2++) {
