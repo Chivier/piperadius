@@ -2,6 +2,9 @@
 #include <cuda_runtime.h>
 #include <iostream>
 
+const int kWarmUpTurns = 100;
+const size_t kWarmUpSize = 16 * 1024 * 1024; // 16 MB
+
 float P2PCopyTest(int device_id1, int device_id2, size_t size) {
     int *pointers[2];
 
@@ -17,8 +20,14 @@ float P2PCopyTest(int device_id1, int device_id2, size_t size) {
     cudaEventCreate(&begin);
     cudaEventCreate(&end);
 
+    // Warm Up
+    int index;
+    for (index = 0; index < kWarmUpTurns; ++index) {
+        cudaMemcpy(pointers[0], pointers[1], kWarmUpSize, cudaMemcpyDeviceToDevice);
+    }
+
     cudaEventRecord(begin);
-    cudaMemcpyAsync(pointers[0], pointers[1], size, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(pointers[0], pointers[1], size, cudaMemcpyDeviceToDevice);
     cudaEventRecord(end);
     cudaEventSynchronize(end);
 
@@ -51,10 +60,10 @@ int main() {
 
     for (int index1 = 0; index1 < numGPUs; index1++) {
         for (int index2 = 0; index2 < numGPUs; index2++) {
-            size_t data_size = 64 * 1024 * 1024;
+            size_t data_size = 128 * 1024 * 1024 * sizeof(int);
             float time = P2PCopyTest(index1, index2, data_size);
             float bandwidth = (data_size / 1024 / 1024 / 1024.0) / (time); // GB/s
-            printf("%f,", bandwidth * bandwidth);
+            printf("%10.2f,", bandwidth * bandwidth);
         }
         printf("\n");
     }
