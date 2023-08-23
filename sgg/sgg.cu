@@ -111,6 +111,7 @@ int main() {
     if (numGPUs < 2) {
         std::cout << "Error: At least two GPUs are required." << std::endl;
         return 0;
+    }
     
 
     printf("Bandwidth test result:\n");
