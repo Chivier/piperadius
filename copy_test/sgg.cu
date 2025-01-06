@@ -3,10 +3,9 @@
 #include <iostream>
 
 const int kWarmUpTurns = 10;
-const size_t kWarmUpSize = ((size_t) 2) * 1024 * 1024 * 1024; // 8 MB
+const size_t kWarmUpSize = ((size_t) 2) * 1024 * 1024 * 1024; // 2GB
 
-float DirectCopyTest(int device_id0, int device_id1, size_t size) {
-    int *pointers[2];
+float DirectCopyTest(int device_id0, int device_id1, size_t size) { int *pointers[2];
 
     cudaSetDevice(device_id0);
     // cudaDeviceEnablePeerAccess(device_id1, 0);
@@ -95,7 +94,6 @@ float P2PCopyTest(int device_id0, int device_id1, size_t size) {
 
     float elapsed;
     cudaEventElapsedTime(&elapsed, begin, end);
-    elapsed /= 1000;
 
     cudaSetDevice(device_id0);
     cudaFree(pointer0);
@@ -109,27 +107,26 @@ float P2PCopyTest(int device_id0, int device_id1, size_t size) {
     return elapsed;
 }
 
-float PinCopyTest(int device_id, size_t size) {
-    int *pointer_device;
+float PinCopyTest(int device_id0, int device_id1, size_t size) {
+    int *pointer_device0;
+    int *pointer_device1;
     int *pointer_host;
 
     cudaHostAlloc((void**)&pointer_host, size, cudaHostAllocDefault);
-    cudaMalloc((void**)&pointer_device, size);
-    memset(pointer_host, 1, size);
+    cudaSetDevice(device_id0);
+    cudaMalloc((void**)&pointer_device0, size);
+    cudaSetDevice(device_id1);
+    cudaMalloc((void**)&pointer_device1, size);
 
     cudaEvent_t begin, end;
     cudaEventCreate(&begin);
     cudaEventCreate(&end);
 
     // Warm Up
-    int index;
-    for (index = 0; index < kWarmUpTurns; ++index) {
-        cudaMemcpy(pointer_device, pointer_host, kWarmUpSize, cudaMemcpyHostToDevice);
-    }
-
     cudaEventRecord(begin);
     // cudaEventSynchronize(begin);
-    cudaMemcpy(pointer_device, pointer_host, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(pointer_host, pointer_device0, size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(pointer_device1, pointer_host, size, cudaMemcpyHostToDevice);
     cudaDeviceSynchronize();
     // cudaMemcpy(pointers[1], pointers[0], size, cudaMemcpyDeviceToDevice);
     cudaEventRecord(end);
@@ -137,10 +134,13 @@ float PinCopyTest(int device_id, size_t size) {
 
     float elapsed;
     cudaEventElapsedTime(&elapsed, begin, end);
-    elapsed /= 1000;
 
     cudaFreeHost(pointer_host);
-    cudaFree(pointer_device);
+
+    cudaSetDevice(device_id0);
+    cudaFree(pointer_device0);
+    cudaSetDevice(device_id1);
+    cudaFree(pointer_device1);
 
     cudaEventDestroy(end);
     cudaEventDestroy(begin);
@@ -171,19 +171,20 @@ int main() {
         for (int index2 = 0; index2 < numGPUs; index2++) {
             size_t data_size = 128 * 1024 * 1024 * sizeof(int);
             float time = P2PCopyTest(index1, index2, data_size);
-            float bandwidth = (data_size / 1024 / 1024 / 1024.0) / (time); // GB/s
-            printf("%10.2f", bandwidth);
+            printf("%10.2f", time);
         }
         printf("\n");
     }
 
     printf("\n");
     printf("Pin memory copy test:\n");
-    for (int index = 0; index < numGPUs; ++index) {
-        size_t data_size = 128 * 1024 * 1024 * sizeof(int);
-        float time = PinCopyTest(index, data_size);
-        float bandwidth = (data_size / 1024 / 1024 / 1024.0) / (time); // GB/s
-        printf("%10.2f", bandwidth);
+    for (int index1 = 0; index1 < numGPUs; index1++) {
+        for (int index2 = 0; index2 < numGPUs; index2++) {
+            size_t data_size = 128 * 1024 * 1024 * sizeof(int);
+            float time = PinCopyTest(index1, index2, data_size);
+            printf("%10.2f", time);
+        }
+        printf("\n");
     }
 
     return 0;
